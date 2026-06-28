@@ -30,8 +30,14 @@ A API estará disponível em `http://localhost:3000`.
 ### Executar
 
 ```bash
-# Todos os testes
+# Testes unitários
 npm run test
+
+# Testes end-to-end (HTTP real + banco SQLite em memória)
+npm run test:e2e
+
+# Todos os testes
+npm run test && npm run test:e2e
 
 # Modo watch (re-executa ao salvar)
 npm run test:watch
@@ -42,7 +48,7 @@ npm run test:cov
 
 ### Estrutura
 
-Os testes ficam ao lado do código-fonte (`*.spec.ts`), seguindo o padrão NestJS:
+**Testes unitários** — ficam ao lado do código-fonte (`*.spec.ts`):
 
 ```
 src/
@@ -56,7 +62,13 @@ src/
 │   └── patients.service.spec.ts        ← 2 testes
 ```
 
-**Total: 16 testes unitários** — todos mockam os repositórios TypeORM com `jest.fn()`, sem banco de dados real, executando em < 1s.
+**Total: 16 testes unitários** — mockam repositórios TypeORM com `jest.fn()`, sem banco real, < 1s.
+
+**Testes end-to-end** — em `test/app.e2e-spec.ts` com banco SQLite em memória:
+
+- 23 testes que exercitam a API HTTP real (supertest)
+- Cria módulo NestJS isolado com `:memory:` database
+- Cobrem todos os endpoints e regras de negócio
 
 ### O que cada teste cobre
 
@@ -78,6 +90,23 @@ src/
 | CT-17 | Doctors | Buscar médico por ID | — |
 | CT-18 | Patients | Criar paciente com sucesso | RF-02 |
 | CT-19 | Patients | Buscar paciente inexistente | — |
+
+### Testes End-to-End
+
+| ID | Fluxo | Status esperado |
+|----|-------|----------------|
+| E2E-01 | Cadastrar médico | 201 |
+| E2E-02 | Cadastrar paciente | 201 |
+| E2E-03 | Criar slot de horário | 201 |
+| E2E-04 | Agendar consulta | 201 |
+| E2E-05 | Slot duplicado para mesmo médico | 409 |
+| E2E-06 | Agendar slot já ocupado | 409 |
+| E2E-07 | Agendar slot no passado | 400 |
+| E2E-08 | Cancelar consulta | 200 |
+| — | Validar nome curto (3 caracteres) | 400 |
+| — | Validar campo extra no body | 400 |
+| — | Listar slots com `?available=true` | Só não agendados |
+| — | Listar consultas do paciente | Array com relations |
 
 ## Documentação da API
 
