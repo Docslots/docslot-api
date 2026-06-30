@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { SlotsService } from './slots.service';
 import { Slot } from './slot.entity';
 
@@ -74,6 +74,19 @@ describe('SlotsService', () => {
 
       await expect(service.create(1, dateTimeStr)).rejects.toThrow(ConflictException);
 
+      expect(slotRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('CT-21 — rejeitar criação de slot no passado', () => {
+    it('deve lançar BadRequestException quando dateTime está no passado', async () => {
+      const pastDate = new Date();
+      pastDate.setFullYear(pastDate.getFullYear() - 1);
+      const dateTimeStr = pastDate.toISOString();
+
+      await expect(service.create(1, dateTimeStr)).rejects.toThrow(BadRequestException);
+
+      expect(slotRepository.findOne).not.toHaveBeenCalled();
       expect(slotRepository.save).not.toHaveBeenCalled();
     });
   });

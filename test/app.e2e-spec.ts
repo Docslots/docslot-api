@@ -1,11 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DoctorsModule } from '../src/doctors/doctors.module';
 import { PatientsModule } from '../src/patients/patients.module';
 import { SlotsModule } from '../src/slots/slots.module';
 import { AppointmentsModule } from '../src/appointments/appointments.module';
+import { Slot } from '../src/slots/slot.entity';
 
 describe('DocSlot API (e2e)', () => {
   let app: INestApplication;
@@ -13,6 +16,7 @@ describe('DocSlot API (e2e)', () => {
   let patientId: number;
   let slotId: number;
   let appointmentId: number;
+  let slotRepository: Repository<Slot>;
   const pastDate = new Date();
   const futureDate = new Date();
 
@@ -42,6 +46,8 @@ describe('DocSlot API (e2e)', () => {
         forbidNonWhitelisted: true,
       }),
     );
+    slotRepository = moduleFixture.get<Repository<Slot>>(getRepositoryToken(Slot));
+
     await app.init();
   });
 
@@ -157,6 +163,16 @@ describe('DocSlot API (e2e)', () => {
         .expect(409);
     });
 
+    it('POST /doctors/:doctorId/slots — deve rejeitar slot no passado', async () => {
+      const oldDate = new Date();
+      oldDate.setFullYear(oldDate.getFullYear() - 1);
+
+      await request(app.getHttpServer())
+        .post(`/doctors/${doctorId}/slots`)
+        .send({ dateTime: oldDate.toISOString() })
+        .expect(400);
+    });
+
     it('POST /doctors/:doctorId/slots — deve rejeitar dateTime inválido', async () => {
       await request(app.getHttpServer())
         .post(`/doctors/${doctorId}/slots`)
@@ -203,14 +219,17 @@ describe('DocSlot API (e2e)', () => {
     });
 
     it('E2E-07 POST /appointments — deve rejeitar slot no passado', async () => {
-      const pastSlotRes = await request(app.getHttpServer())
-        .post(`/doctors/${doctorId}/slots`)
-        .send({ dateTime: pastDate.toISOString() })
-        .expect(201);
+      const pastSlot = await slotRepository.save(
+        slotRepository.create({
+          doctorId,
+          dateTime: pastDate,
+          isBooked: false,
+        }),
+      );
 
       await request(app.getHttpServer())
         .post('/appointments')
-        .send({ slotId: pastSlotRes.body.id, patientId })
+        .send({ slotId: pastSlot.id, patientId })
         .expect(400);
     });
 

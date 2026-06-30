@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Slot } from './slot.entity';
@@ -11,8 +11,14 @@ export class SlotsService {
   ) {}
 
   async create(doctorId: number, dateTime: string): Promise<Slot> {
+    const slotDate = new Date(dateTime);
+
+    if (slotDate < new Date()) {
+      throw new BadRequestException('Cannot create a slot in the past');
+    }
+
     const existing = await this.slotRepository.findOne({
-      where: { doctorId, dateTime: new Date(dateTime) },
+      where: { doctorId, dateTime: slotDate },
     });
     if (existing) {
       throw new ConflictException('Doctor already has a slot at this date/time');
